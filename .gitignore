@@ -1,0 +1,6 @@
+*.out
+vgcore.*
+bfe-*
+*.o
+t.b
+bf.c

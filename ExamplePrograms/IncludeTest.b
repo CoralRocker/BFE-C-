@@ -1,0 +1,3 @@
+[-]
+@IncludeTest.include.b@
+[>++++++<-]>.
