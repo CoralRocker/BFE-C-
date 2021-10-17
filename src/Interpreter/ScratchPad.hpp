@@ -3,6 +3,7 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <filesystem>
 
 class ScratchPad {
@@ -24,8 +25,8 @@ class ScratchPad {
 		
 
 
-		bool loopStart(std::ifstream& f);
-		bool loopEnd(std::ifstream& f);
+		bool loopStart(std::istringstream& f);
+		bool loopEnd(std::istringstream& f);
 
 		void next();
 		void prev();
@@ -39,7 +40,8 @@ class ScratchPad {
 		ScratchPad& operator-- (); // -- Prefix
 		ScratchPad& operator= (uint64_t x); // Assign current position
 		ScratchPad& operator<< (uint64_t x);
-		
+		ScratchPad& operator+= (uint64_t x);
+		ScratchPad& operator-= (uint64_t x);
 
 		void populate(ScratchPad& next); // Load into a new temporary scratchpad
 		void depopulate(ScratchPad& next); // Load from a temporary scratchpad

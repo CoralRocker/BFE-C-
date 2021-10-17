@@ -2,7 +2,7 @@ import time
 from subprocess import call, DEVNULL
 import sys
 import struct
-human = open(sys.argv[1]+".txt", "w+");
+human = open(sys.argv[1]+".txt", "w");
 bot = open(sys.argv[1]+".dat","wb+");
 
 

@@ -1,1 +1,2 @@
 NoOpt : No optimizations
+Preprocess : Inlining of BFE file as single line on string. Remove comments and whitespace before starting to read code.

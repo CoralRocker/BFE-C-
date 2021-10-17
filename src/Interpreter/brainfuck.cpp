@@ -3,12 +3,82 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <sstream>
+#include <string>
 #include <filesystem>
 #include "ScratchPad.hpp"
 
 bool DBG = false;
 
 #define DEBUG if(DBG) 
+
+std::istringstream* preprocess(std::ifstream &file) {
+	std::string str;
+	
+	char c;
+	bool comment = false;
+	while( !file.get(c).fail() ){
+		
+		switch(c) {
+			case '/':
+			{
+				int nxt = file.peek();
+				if( nxt == '*' ){
+					comment = true;
+					file.get(c);
+				}else if( nxt == '/' ){
+					while( !file.get(c).fail() ){ if( c == '\n' ) break; }
+					// comment = false;
+				}
+				break;
+			}
+			case '*':
+			{
+				if( !comment ) break;
+				int nxt = file.peek();
+				if( nxt == '/' ){
+					comment = false;
+				}
+				break;
+			}
+		}
+		if( !comment ){
+		switch(c){
+			case '+':
+			case '-':
+			case '>':
+			case '<':
+			case '.':
+			case ',':
+			case '[':
+			case ']':
+			case '{':
+			case '}':
+			case '!':
+			case '~':
+			case '|':
+			case '^':
+			case '#':
+			case 'd':
+				str.push_back(c);		
+				break;
+			case '@':
+				str.push_back(c);
+				while( !file.get(c).fail() ){
+					str.push_back(c);
+					if( c == '@' ) {
+						break;
+					}
+				}
+				break;
+		}
+		}
+
+			
+	}
+	delete &file;
+	return new std::istringstream(str);
+}
 
 int main(int argc, char** argv){
 	
@@ -22,14 +92,16 @@ int main(int argc, char** argv){
 		fname = argv[1];
 	}
 
-	std::ifstream *file = new std::ifstream(fname);
-	if( !file->is_open() ){
+	std::ifstream *tmp_file = new std::ifstream(fname);
+	if( !tmp_file->is_open() ){
 		std::cerr << "Err: file not opened." << std::endl;
 		return -1;
 	}
+	std::istringstream *file = preprocess(*tmp_file);
 	
+
 	// Store current filestream to a vector
-	std::vector<std::ifstream*> file_vec;
+	std::vector<std::istringstream*> file_vec;
 	file_vec.push_back(file);
 	
 	uint32_t scratch_id = 0;
@@ -41,41 +113,12 @@ int main(int argc, char** argv){
 	prog->set_path( std::filesystem::absolute(fname).parent_path() );
 
 	char c;
-	bool comment = false;
 	while( !file->get(c).fail() ){ // Get C while stream isn't in failstate
 		
 		DEBUG{
-			if( c != ' ' && c != '\t' && c != '\n' && !comment )
-				std::cout << "Char " << c << std::endl;
+			std::cout << "Char " << c << std::endl;
 		}
-
-		// Check for comments real quick...
-		switch(c) {
-			case '/':
-			{
-				int nxt = file->peek();
-				if( nxt == '*' ){
-					comment = true;
-					file->get(c);
-				}else if( nxt == '/' ){
-					while( !file->get(c).fail() ){ if( c == '\n' ) break; }
-					// comment = false;
-				}
-				break;
-			}
-			case '*':
-			{
-				if( !comment ) break;
-				int nxt = file->peek();
-				if( nxt == '/' ){
-					comment = false;
-				}
-				break;
-			}
-		}
-		
-		// Main program switch
-		if( !comment ){
+	
 		switch(c) {
 			case '>':
 				prog->next();
@@ -85,10 +128,24 @@ int main(int argc, char** argv){
 				break;
 			case '+':
 				// std::cout << "incrementing" << std::endl;
-				++*prog;
+				if( file->peek() == '+' ){
+					int counter = 1;
+					while( !file->get(c).fail() ){
+						counter++;
+					}
+					*prog += counter;
+				}else
+					++*prog;
 				break;
 			case '-':
-				--*prog;
+				if( file->peek() == '-' ){
+					int counter = 1;
+					while( !file->get(c).fail() ){
+						counter++;
+					}
+					*prog += counter;
+				}else
+					--*prog;
 				break;
 			case '.':
 				prog->print();
@@ -150,14 +207,12 @@ int main(int argc, char** argv){
 				fs::path includepath = prog->get_path() / fname;
 
 				std::ifstream *f = new std::ifstream (includepath);
-				file_vec.push_back(f);
-				file = f;
-				
-				if( !file->is_open() ){
-					std::cerr << "Error opening include!" << std::endl;
-					std::cerr << "Fine path: " << includepath << std::endl;
+				if( !f->is_open() ){
+					std::cerr << "Error opening " << includepath << std::endl;
 					return -1;
 				}
+				file = preprocess(*f);
+				file_vec.push_back(file);
 
 				ScratchPad *tmp = new ScratchPad(scratch_id++);
 				tmp->set_path(includepath.parent_path());
@@ -181,11 +236,10 @@ int main(int argc, char** argv){
 			case '#':
 				std::cout << prog->get();
 				break;
-		}}
+		}
 		
 		DEBUG{
-			if( c != ' ' && c != '\t' && c != '\n' && !comment )
-				prog->printPad();
+			prog->printPad();
 		}	
 	}
 

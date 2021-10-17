@@ -1,6 +1,7 @@
 #include <stdexcept>
 #include <vector>
 #include <iostream>
+#include <sstream>
 #include <algorithm>
 #include <filesystem>
 #include <string>
@@ -35,7 +36,20 @@ ScratchPad& ScratchPad::operator<<(uint64_t x) {
 	return *this;
 }
 
-bool ScratchPad::loopStart(std::ifstream& f){
+ScratchPad& ScratchPad::operator+=(uint64_t x) {
+	bf_vec.at(pos) += x;
+	return *this;
+}
+
+ScratchPad& ScratchPad::operator-=(uint64_t x) {
+	if( x > bf_vec.at(pos) )
+		bf_vec.at(pos) = 0;
+	else
+		bf_vec.at(pos) -= x;
+	return *this;
+}
+
+bool ScratchPad::loopStart(std::istringstream& f){
 	if( get() != 0 ){
 		loop_vec.push_back(f.tellg());
 		return true;
@@ -48,7 +62,7 @@ bool ScratchPad::loopStart(std::ifstream& f){
 	}
 }
 
-bool ScratchPad::loopEnd(std::ifstream& f){
+bool ScratchPad::loopEnd(std::istringstream& f){
 	if( get() != 0 ){
 		f.seekg(loop_vec.back());
 		return false;
