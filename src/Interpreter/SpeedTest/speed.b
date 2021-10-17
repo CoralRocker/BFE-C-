@@ -5,8 +5,9 @@
 >[-]>[-]<<
 [>+<-]
 +++++ +++++.[-] // Newline
+
 >>++++<<++ // (8^8)/4
 
-@division2.include.b@
+@division.include.b@
 #
 +++++ +++++.[-] // Newline

@@ -2,6 +2,8 @@
 #include <vector>
 #include <iostream>
 #include <algorithm>
+#include <filesystem>
+#include <string>
 #include "ScratchPad.hpp"
 
 using namespace std;
@@ -18,17 +20,17 @@ ScratchPad& ScratchPad::operator++() {
 }
 
 ScratchPad& ScratchPad::operator--() {
-	if( bf_vec.at(pos) != 0 )
+	if( bf_vec.at(pos) > 0 )
 		bf_vec.at(pos)--;
 	return *this;
 }
 
-ScratchPad& ScratchPad::operator=(unsigned char x) {
+ScratchPad& ScratchPad::operator=(uint64_t x) {
 	bf_vec.at(pos) = x;
 	return *this;
 }
 
-ScratchPad& ScratchPad::operator<<(unsigned char x) {
+ScratchPad& ScratchPad::operator<<(uint64_t x) {
 	bf_vec.at(pos) = x;
 	return *this;
 }
@@ -50,11 +52,11 @@ bool ScratchPad::loopEnd(std::ifstream& f){
 	if( get() != 0 ){
 		f.seekg(loop_vec.back());
 		return false;
-	}else{
-		loop_vec.pop_back();
-		return true;
 	}
+	loop_vec.pop_back();
+	return true;
 }
+
 
 void ScratchPad::next() {
 	if( ++pos >= bf_vec.size() ){
@@ -69,12 +71,17 @@ void ScratchPad::prev() {
 }
 
 void ScratchPad::populate(ScratchPad& next){
-	uint8_t cur = get();
+	uint64_t cur = get();
+	if( bf_vec.size() <= pos + cur ){
+		cerr << "Err populating Pad " << next.getId() << " from Pad " << getId() << endl;
+		throw runtime_error("Error! Attempting to populate a scratchpad with more information than you have!");
+	}
+
 	if( cur == 0 ){
 		return;
 	}else{
-		for( uint8_t i = 1; i <= cur; i++ ){
-			next.get(i) = get(pos+i);
+		for( uint64_t i = 1; i <= cur; i++ ){
+			next.get(i-1) = get(pos+i);
 			next.next();
 		}
 		next.to_start();
@@ -82,15 +89,15 @@ void ScratchPad::populate(ScratchPad& next){
 }
 
 void ScratchPad::trimMemory(){
-	int x = get();
-	auto new_end = std::remove_if(bf_vec.begin(), bf_vec.end(), [&](uint8_t c) -> bool { return c == x; });	
+	uint64_t x = get();
+	auto new_end = std::remove_if(bf_vec.begin(), bf_vec.end(), [&](uint64_t c) -> bool { return c == x; });	
 	bf_vec.erase(new_end, bf_vec.end());	
 }
 
 void ScratchPad::printPad() {
 	cout << "ScratchPad " << padId << endl;
 	cout << "[ ";
-	for(uint8_t &c: bf_vec) {
+	for(uint64_t &c: bf_vec) {
 		cout << +c << " ";
 	}
 	cout << "]" << endl;
@@ -104,5 +111,5 @@ void ScratchPad::printPad() {
 }
 
 void ScratchPad::print() {
-	cout << bf_vec.at(pos);
+	cout << static_cast<char>(bf_vec.at(pos)%256);
 }

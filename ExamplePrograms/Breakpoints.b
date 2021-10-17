@@ -10,18 +10,23 @@ COMPLETE EXPECTED OUTPUT:
 
 
 
-Loops Work?
+// Loops Work?
 ++++++++++++++++++++++++++++++++++++++++++++++++.[->+<]>.[-]++++++++++.[-]<
+/*
 Expected output: 00
 Wrong output: 0
 	      6?
 Pointer Loopback?
+*/
 [-]++++++++[->++++++<]>[-<+>]<<<<<.[-]++++++++++.[-]<
+/*
 Expected output: 0
 Wrong output: program stalls
 
 Negative numbers?
+*/
 [-]>[-]++++[-<->]>++++++++[-<++++++>]<.[-]++++++++++.
+/*
 Expected output: 0
 Wrong output: a comma 
-
+*/
