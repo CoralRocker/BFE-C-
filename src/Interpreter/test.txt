@@ -1,2 +1,0 @@
-Running {numRuns} times
-Run 1/25
