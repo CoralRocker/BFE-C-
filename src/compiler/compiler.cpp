@@ -33,6 +33,12 @@ bool validate_fname(string_view fname) {
   return fname.ends_with(".b") || fname.ends_with(".bf");
 } 
 
+string output_file(string fname, string suffix = "s"){
+  size_t pos = fname.rfind(".b");
+  string result = fname.substr(0, pos+1);
+  return result + suffix;
+}
+
 int main(int argc, char** argv) {
 
   if( argc < 2 ) {
@@ -105,63 +111,64 @@ int main(int argc, char** argv) {
   stringstream of;
 
 // TODO: Use correct exit codes on errors. 
-  of << "  .section .data" << endl;
+  of << "\t.section .data" << endl;
   of << "fdin:" << endl;
-  of << "  .long " << default_i << endl;
+  of << "\t.long " << default_i << endl;
   of << "fdout:" << endl;
-  of << "  .long " << default_o << endl;
-  of << "  .section .rodata" << endl;
+  of << "\t.long " << default_o << endl;
+  of << "\t.section .rodata" << endl;
   of << "fail_alloc:" << endl;
-  of << "  .string \"Failed to allocate memory! (malloc/realloc returned nullptr)\"" << endl;
+  of << "\t.string \"Failed to allocate memory! (malloc/realloc returned nullptr)\"" << endl;
   of << "fail_write:" << endl;
-  of << "  .string \"Failed to write byte to fdout! (call write returned 0)\"" << endl;
+  of << "\t.string \"Failed to write byte to fdout! (call write returned 0)\"" << endl;
   of << "fail_read:" << endl;
-  of << "  .string \"Failed to read byte from fdin! (call read returned 0)\"" << endl;
+  of << "\t.string \"Failed to read byte from fdin! (call read returned 0)\"" << endl;
   of << "print_num:" << endl;
-  of << "  .string \"%llu\"" << endl;
-  of << "  .section .text" << endl;
-  of << "  .globl main" << endl;
+  of << "\t.string \"%llu\"" << endl;
+  of << "\t.section .text" << endl;
+  of << "\t.globl main" << endl;
   of << "xmalloc:" << endl;
-  of << "  mov $1, %rsi" << endl;
-  of << "  call calloc" << endl;
-  of << "  cmp $0, %rax" << endl;
-  of << "  je .Lxmerr" << endl;
-  of << "  ret" << endl;
+  of << "\tlea (,%rdi,8), %rdi" << endl;
+  of << "\tmov $1, %rsi" << endl;
+  of << "\tcall calloc" << endl;
+  of << "\tcmp $0, %rax" << endl;
+  of << "\tje .Lxmerr" << endl;
+  of << "\tret" << endl;
   of << ".Lxmerr:" << endl;
-  of << "  lea fail_alloc(%rip), %rdi" << endl;
-  of << "  call puts" << endl;
-  of << "  mov $1, %rax" << endl;
-  of << "  call exit" << endl;
+  of << "\tlea fail_alloc(%rip), %rdi" << endl;
+  of << "\tcall puts" << endl;
+  of << "\tmov $1, %rax" << endl;
+  of << "\tcall exit" << endl;
   of << "xrealloc:" << endl;
-  of << "  lea (,%r14,2), %rdi" << endl;
-  of << "  call xmalloc" << endl;
-  of << "  mov %rax, %rdi" << endl;
-  of << "  mov %r13, %rsi" << endl;
-  of << "  mov %r14, %rdx" << endl;
-  of << "  call memmove" << endl;
-  of << "  sub %r13, %r12 # get index of r12" << endl;
-  of << "  add %rax, %r12 " << endl;
-  of << "  mov %r13, %rdi" << endl;
-  of << "  push %rax" << endl;
-  of << "  call free" << endl;
-  of << "  pop %rax" << endl;
-  of << "  mov %rax, %r13" << endl;
-  of << "  lea (,%r14,2), %r14 " << endl;
-  of << "  ret" << endl;
+  of << "\tlea (,%r14,2), %rdi" << endl;
+  of << "\tcall xmalloc" << endl;
+  of << "\tmov %rax, %rdi" << endl;
+  of << "\tmov %r13, %rsi" << endl;
+  of << "\tmov %r14, %rdx" << endl;
+  of << "\tcall memmove" << endl;
+  of << "\tsub %r13, %r12 # get index of r12" << endl;
+  of << "\tlea (,%r12,8), %r12" << endl;
+  of << "\tadd %rax, %r12 " << endl;
+  of << "\tmov %r13, %rdi" << endl;
+  of << "\tpush %rax" << endl;
+  of << "\tcall free" << endl;
+  of << "\tpop %rax" << endl;
+  of << "\tmov %rax, %r13" << endl;
+  of << "\tlea (,%r14,2), %r14 " << endl;
+  of << "\tret" << endl;
   of << "err_read:" << endl;
-  of << "  lea fail_read(%rip), %rdi" << endl;
-  of << "  call puts" << endl;
-  of << "  mov $2, %rax" << endl;
-  of << "  call exit" << endl;
+  of << "\tlea fail_read(%rip), %rdi" << endl;
+  of << "\tcall puts" << endl;
+  of << "\tmov $2, %rax" << endl;
+  of << "\tcall exit" << endl;
   of << "err_write:" << endl;
-  of << "  lea fail_write(%rip), %rdi" << endl;
-  of << "  call puts" << endl;
-  of << "  mov $2, %rax" << endl;
-  of << "  call exit" << endl;
+  of << "\tlea fail_write(%rip), %rdi" << endl;
+  of << "\tcall puts" << endl;
+  of << "\tmov $2, %rax" << endl;
+  of << "\tcall exit" << endl;
   of << "main:" << endl;
   of << "\tmov $" << ARR_SIZE << ", %rdi" << endl;
   of << "\tcall xmalloc" << endl;
-  of << "\tcmp $0, %rax" << endl;
   of << "\tmov %rax, %r12" << endl;
   of << "\tmov %rax, %r13" << endl;
   of << "\tmov $" << ARR_SIZE << ", %r14" << endl;
@@ -185,15 +192,15 @@ int main(int argc, char** argv) {
         break;
 
       case '+':
-        of << "\tincb (%r12)" << endl;
+        of << "\tincq (%r12)" << endl;
         break;
       case '-':
-        of << "\tdecb (%r12)" << endl;
+        of << "\tdecq (%r12)" << endl;
         if( err_manage ) { // protect against wrap-around
-          of << "\tmov (%r12), %cl" << endl;
+          of << "\tmov (%r12), %rcx" << endl;
           of << "\tmov $0, %rax" << endl;
           of << "\tcmovsq %rax, %rcx" << endl;
-          of << "\tmovb %cl, (%r12)" << endl;
+          of << "\tmov %rcx, (%r12)" << endl;
         }
         break;
       case '[':
@@ -218,6 +225,7 @@ int main(int argc, char** argv) {
         }
         break;
       case ',':
+        of << "\tmovq $0, (%r12)" << endl;
         of << "\tmov fdin(%rip), %edi" << endl;
         of << "\tmov %r12, %rsi" << endl;
         of << "\tmov $1, %rdx" << endl;
@@ -228,16 +236,16 @@ int main(int argc, char** argv) {
         }
         break;
       case '>':
-        of << "\tinc %r12" << endl;
+        of << "\taddq $8, %r12" << endl;
         if( err_manage ) { // Expand memory on extensive right shift.
-          of << "\tcmpq (%r14,%r13,), %r12" << endl;
+          of << "\tcmpq (%r13,%r14,8), %r12" << endl;
           of << "\tjl .Ls" << shiftn << endl;
           of << "\tcall xrealloc" << endl;
           of << ".Ls" << shiftn++ << ":" << endl;
         }
         break;
       case '<':
-        of << "\tdec %r12" << endl;
+        of << "\tsubq $8, %r12" << endl;
         if( err_manage ) {
           of << "\tcmp %r13, %r12" << endl;
           of << "\tcmovl %r13, %r12" << endl;
@@ -246,7 +254,7 @@ int main(int argc, char** argv) {
       case '#':
         of << "\txor %rax, %rax" << endl;
         of << "\tlea print_num(%rip), %rdi" << endl;
-        of << "\tmovzb (%r12), %rsi" << endl;
+        of << "\tmovq (%r12), %rsi" << endl;
         of << "\tcall printf" << endl;
     }
   }
@@ -268,19 +276,17 @@ int main(int argc, char** argv) {
     cout << "Compiling " << templ << endl;
 
     
-    if( ofname.empty() ) {
-      char* const comparg[] = {(char*)"clang", templ, NULL };
-      execv("/usr/bin/clang", comparg); 
-    }else{
-      char * const comparg[] = {(char*)"clang", (char*)templ, (char*)"-o", (char*) ofname.c_str(), NULL };
-      execv("/usr/bin/clang", comparg); 
-    }
+    if( ofname.empty() ) 
+      ofname = output_file(ifname, "o");
+    
+    char * const comparg[] = {(char*)"clang", (char*)templ, (char*)"-o", (char*) ofname.c_str(), NULL };
+    execv("/usr/bin/clang", comparg); 
     
     unlink(templ);
     free(templ);
   }else{
     string oname;
-    if( ofname.empty() ) oname = ifname + ".s";
+    if( ofname.empty() ) oname = output_file(ifname);
     else oname = ofname;
     
     ofstream out(oname);
