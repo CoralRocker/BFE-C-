@@ -12,12 +12,13 @@
 #include <cstring>
 #include <filesystem>
 
+#include "AST/ast.hpp"
+
 namespace fs = std::filesystem;
 using namespace std;
-void prepare_asm(ostream &of);
 
 void usage(char* prog) {
-  cerr << "usage: " << prog << " [-s] [-o outputname] [-a array size] filename" << endl;
+  cerr << "usage: " << prog << " [options] [-o outputname] filename" << endl;
   cerr << "\t -s: don't compile, return assembly code." << endl;
   cerr << "\t -o [name]: output to given file" << endl;
   cerr << "\t -a [size]: size of default bf array" << endl;
@@ -26,6 +27,8 @@ void usage(char* prog) {
   cerr << "\t -I [fd]: default file descriptor for input. Must already be open." << endl;
   cerr << "\t -O [fd]: default file descriptor for output. Must already be open." << endl;
   cerr << "\t -e: don't include error management. Dynamic memory is disabled. works with -a." << endl;
+  cerr << "\t -g: compile with debug symbols for gdb" << endl;
+  cerr << "\t -t: Print out abstract syntax tree for program." << endl;
   exit(-1);
 }
 
@@ -48,11 +51,14 @@ int main(int argc, char** argv) {
 
   bool compile = true;
   bool err_manage = true;
+  bool gdb = false;
   string ofname = "", ifname = ""; 
   int opt;
   int ARR_SIZE = 1024;
   int default_i = 0, default_o = 1;
-  while( (opt = getopt(argc, argv, "so:a:heI:O:")) != -1 ) {
+  bool dbg = false;
+  bool print_ast = false;
+  while( (opt = getopt(argc, argv, "so:a:heI:O:gdt")) != -1 ) {
     switch(opt) {
       case 's':
         compile = false;
@@ -76,10 +82,16 @@ int main(int argc, char** argv) {
       case 'O':
         default_o = stoi(optarg);
         break;
+      case 'g':
+        gdb = true;
+        break;
+      case 'd':
+        dbg = true;
+        break;
+      case 't':
+        print_ast = true;
+        break;
       case 'h':
-        if( optarg ){
-          
-        }
       default:
         usage(argv[0]);
         break;
@@ -101,82 +113,10 @@ int main(int argc, char** argv) {
     exit(1);
   }
 
-
-  int loopCount = 0;
-  long long shiftn = 0;
-  stack<int> loop;
-
-
   ifstream file(ifname);
   stringstream of;
-
-// TODO: Use correct exit codes on errors. 
-  of << "\t.section .data" << endl;
-  of << "fdin:" << endl;
-  of << "\t.long " << default_i << endl;
-  of << "fdout:" << endl;
-  of << "\t.long " << default_o << endl;
-  of << "\t.section .rodata" << endl;
-  of << "fail_alloc:" << endl;
-  of << "\t.string \"Failed to allocate memory! (malloc/realloc returned nullptr)\"" << endl;
-  of << "fail_write:" << endl;
-  of << "\t.string \"Failed to write byte to fdout! (call write returned 0)\"" << endl;
-  of << "fail_read:" << endl;
-  of << "\t.string \"Failed to read byte from fdin! (call read returned 0)\"" << endl;
-  of << "print_num:" << endl;
-  of << "\t.string \"%llu\"" << endl;
-  of << "\t.section .text" << endl;
-  of << "\t.globl main" << endl;
-  of << "xmalloc:" << endl;
-  of << "\tlea (,%rdi,8), %rdi" << endl;
-  of << "\tmov $1, %rsi" << endl;
-  of << "\tcall calloc" << endl;
-  of << "\tcmp $0, %rax" << endl;
-  of << "\tje .Lxmerr" << endl;
-  of << "\tret" << endl;
-  of << ".Lxmerr:" << endl;
-  of << "\tlea fail_alloc(%rip), %rdi" << endl;
-  of << "\tcall puts" << endl;
-  of << "\tmov $1, %rax" << endl;
-  of << "\tcall exit" << endl;
-  of << "xrealloc:" << endl;
-  of << "\tlea (,%r14,2), %rdi" << endl;
-  of << "\tcall xmalloc" << endl;
-  of << "\tmov %rax, %rdi" << endl;
-  of << "\tmov %r13, %rsi" << endl;
-  of << "\tmov %r14, %rdx" << endl;
-  of << "\tcall memmove" << endl;
-  of << "\tsub %r13, %r12 # get index of r12" << endl;
-  of << "\tlea (,%r12,8), %r12" << endl;
-  of << "\tadd %rax, %r12 " << endl;
-  of << "\tmov %r13, %rdi" << endl;
-  of << "\tpush %rax" << endl;
-  of << "\tcall free" << endl;
-  of << "\tpop %rax" << endl;
-  of << "\tmov %rax, %r13" << endl;
-  of << "\tlea (,%r14,2), %r14 " << endl;
-  of << "\tret" << endl;
-  of << "err_read:" << endl;
-  of << "\tlea fail_read(%rip), %rdi" << endl;
-  of << "\tcall puts" << endl;
-  of << "\tmov $2, %rax" << endl;
-  of << "\tcall exit" << endl;
-  of << "err_write:" << endl;
-  of << "\tlea fail_write(%rip), %rdi" << endl;
-  of << "\tcall puts" << endl;
-  of << "\tmov $2, %rax" << endl;
-  of << "\tcall exit" << endl;
-  of << "main:" << endl;
-  of << "\tmov $" << ARR_SIZE << ", %rdi" << endl;
-  of << "\tcall xmalloc" << endl;
-  of << "\tmov %rax, %r12" << endl;
-  of << "\tmov %rax, %r13" << endl;
-  of << "\tmov $" << ARR_SIZE << ", %r14" << endl;
-  of << "\tmov %rax, %rdi" << endl;
-  of << "\tmov $0, %rsi" << endl;
-  of << "\tmov $" << ARR_SIZE << ", %rdx" << endl;
-  of << "\tcall memset" << endl;
-
+  
+  AST ast;
 
   char c;
   while( !file.get(c).eof() ){
@@ -192,75 +132,43 @@ int main(int argc, char** argv) {
         break;
 
       case '+':
-        of << "\tincq (%r12)" << endl;
+        ast.insertOp(AST::INC);
         break;
       case '-':
-        of << "\tdecq (%r12)" << endl;
-        if( err_manage ) { // protect against wrap-around
-          of << "\tmov (%r12), %rcx" << endl;
-          of << "\tmov $0, %rax" << endl;
-          of << "\tcmovsq %rax, %rcx" << endl;
-          of << "\tmov %rcx, (%r12)" << endl;
-        }
+        ast.insertOp(AST::DEC);
         break;
       case '[':
-        loop.push(loopCount++);
-        of << "\tjmp .L" << loop.top() << "e" << endl;
-        of << ".L" << loop.top() << ":" << endl;
+        ast.insertOp(AST::LOOP, false);
         break;
       case ']':
-        of << ".L" << loop.top() << "e:" << endl;
-        of << "\tcmpb $0, (%r12)" << endl;
-        of << "\tjne .L" << loop.top() << endl;
-        loop.pop();
+        ast.insertOp(AST::LOOP, true);
         break;
       case '.':
-        of << "\tmov fdout(%rip), %edi" << endl;
-        of << "\tmov %r12, %rsi" << endl;
-        of << "\tmov $1, %rdx" << endl;
-        of << "\tcall write" << endl;
-        if( err_manage ) {
-          of << "\tcmp $0, %rax" << endl;
-          of << "\tje err_write" << endl;
-        }
+        ast.insertOp(AST::PUTC);
         break;
       case ',':
-        of << "\tmovq $0, (%r12)" << endl;
-        of << "\tmov fdin(%rip), %edi" << endl;
-        of << "\tmov %r12, %rsi" << endl;
-        of << "\tmov $1, %rdx" << endl;
-        of << "\tcall read" << endl;
-        if( err_manage ) {
-          of << "\tcmp $0, %rax" << endl;
-          of << "\tje err_write" << endl;
-        }
+        ast.insertOp(AST::GETC);
         break;
       case '>':
-        of << "\taddq $8, %r12" << endl;
-        if( err_manage ) { // Expand memory on extensive right shift.
-          of << "\tcmpq (%r13,%r14,8), %r12" << endl;
-          of << "\tjl .Ls" << shiftn << endl;
-          of << "\tcall xrealloc" << endl;
-          of << ".Ls" << shiftn++ << ":" << endl;
-        }
+        ast.insertOp(AST::RSHIFT);
         break;
       case '<':
-        of << "\tsubq $8, %r12" << endl;
-        if( err_manage ) {
-          of << "\tcmp %r13, %r12" << endl;
-          of << "\tcmovl %r13, %r12" << endl;
-        }
+        ast.insertOp(AST::LSHIFT);
         break;
       case '#':
-        of << "\txor %rax, %rax" << endl;
-        of << "\tlea print_num(%rip), %rdi" << endl;
-        of << "\tmovq (%r12), %rsi" << endl;
-        of << "\tcall printf" << endl;
+        ast.insertOp(AST::PRINTNUM);
+        break;
+      case 'd':
+        ast.insertOp(AST::DEBUG);
+        break;
     }
   }
+  
+  ast.optimize();
+  if( print_ast )
+    ast.print(cout);
+  ast.genAsm(of, ARR_SIZE, default_i, default_o, dbg, err_manage);
 
-  of << "\tmov $0, %rax" << endl;
-  of << "\tret" << endl;
   
   if( compile ) {
     
@@ -277,16 +185,16 @@ int main(int argc, char** argv) {
 
     
     if( ofname.empty() ) 
-      ofname = output_file(ifname, "o");
+      ofname = output_file(fs::path(ifname).filename(), "o");
     
-    char * const comparg[] = {(char*)"clang", (char*)templ, (char*)"-o", (char*) ofname.c_str(), NULL };
+    char * const comparg[] = {(char*)"clang", (char*)templ, (char*)"-o", (char*) ofname.c_str(), ( gdb ? (char*)"-ggdb" : NULL ), NULL };
     execv("/usr/bin/clang", comparg); 
     
     unlink(templ);
     free(templ);
   }else{
     string oname;
-    if( ofname.empty() ) oname = output_file(ifname);
+    if( ofname.empty() ) oname = output_file(fs::path(ifname).filename());
     else oname = ofname;
     
     ofstream out(oname);

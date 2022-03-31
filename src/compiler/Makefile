@@ -1,5 +1,5 @@
-CFLAGS=-Wall -Werror -Wpedantic -ggdb -std=c++20
+CFLAGS=-Wall -Wpedantic -ggdb -std=c++20
 CC=g++
 
-compiler: compiler.cpp
-	$(CC) $(CFLAGS) compiler.cpp -o comp
+compiler: compiler.cpp AST/ast.cpp
+	$(CC) $(CFLAGS) compiler.cpp AST/ast.cpp -o bfc
