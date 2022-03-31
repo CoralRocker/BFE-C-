@@ -488,8 +488,25 @@ void AST::gen_asm_node(std::ostream &os, const_node_ptr n) const {
       os << endl;
       os << "\tmovq $" << n->val() << ", (%r12)" << endl;
       break;
+
     case MOVE:
       os << endl;
+      if( errmng ) {
+        int max_off = 0;
+        for( const pair<int,int>& p : n->getOffsets() ){
+          if( p.first > max_off ) max_off = p.first;
+        }
+        if( max_off > 0 ) {
+          os << "\tlea (%r13,%r14,8), %rax" << endl
+             << "\tlea " << max_off * 8 << "(,%r12,), %rcx" << endl
+             << "\tcmp %rax, %rcx" << endl
+             << "\tjb .Ls" << shift << endl
+             << "\tcall xrealloc" << endl
+             << ".Ls" << shift << ":" << endl;
+          shift++;
+        }
+      }
+      
       if( n->val() != 0 )
         os << "\tmovq " << 8*n->val() << "(%r12), %rax" << endl;
       else
