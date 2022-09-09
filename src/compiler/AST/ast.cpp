@@ -172,11 +172,14 @@ bool AST::is_add_sub_loop(const_node_ptr n) const{
 bool AST::is_move_loop(const_node_ptr n) const {
   if( n->getType() != LOOP ) return false;
   
+  bool one_dec = false, found = false;
   for( const_node_ptr c : n->getChildren() ){
     switch(c->getType()) {
+      case DEC:
+        if( !found ){ found = true; one_dec = true; }
+        else if( found ) one_dec = false;
       case RSHIFT:
       case LSHIFT:
-      case DEC:
       case MOVE:
         break;
       default:
@@ -184,7 +187,7 @@ bool AST::is_move_loop(const_node_ptr n) const {
         break;
     }
   }
-  return true;
+  return one_dec;
 }
 
 void AST::optimize() {
@@ -248,11 +251,26 @@ void AST::optimize_loop_body(node_ptr n) {
   vector<node_ptr> newchildren;
   
   bool move_loop = is_move_loop(n);
-
+  int max_offset = 0, offset = 0;
   for( auto it = children.begin(); it != children.end()-1; ++it ){
     lookahead = *(it+1); cur = *it; 
     if( move_loop ) {
-      
+      switch( cur->getType() ) {
+        case RSHIFT:
+          offset += cur->val();
+          if( offset > max_offset ) max_offset = offset;
+          break;
+        case LSHIFT:
+          offset -= cur->val();
+          break;
+        case MOVE:
+          for( const pair<int,int>& p : cur->getOffsets() ){
+            if( offset+p.first > max_offset ) max_offset = offset+p.first; 
+          }
+          break;
+        default:
+          break;
+      }
     }
   }
   

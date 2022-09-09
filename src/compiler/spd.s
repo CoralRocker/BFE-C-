@@ -72,40 +72,28 @@ debug_print:
 	call printf
 	ret
 main:
-	mov $4, %rdi
+	mov $1024, %rdi
 	call xmalloc
 	mov %rax, %r12
 	mov %rax, %r13
-	mov $4, %r14
+	mov $1024, %r14
 	mov %rax, %rdi
 	mov $0, %rsi
-	mov $4, %rdx
+	mov $1024, %rdx
 	call memset
 
 	addq $5, (%r12)
 
 	add $8, %r12
-	lea (%r13, %r14,8), %rax
-	cmpq %rax, %r12
-	jb .Ls0
-	call xrealloc
-.Ls0:
 
-	addq $3, (%r12)
+	addq $2, (%r12)
 
 	sub $8, %r12
-	cmp %r13, %r12
-	cmovl %r13, %r12
 
 	jmp .L0e
 .L0:
 
 	add $8, %r12
-	lea (%r13, %r14,8), %rax
-	cmpq %rax, %r12
-	jb .Ls1
-	call xrealloc
-.Ls1:
 
 	movq (%r12), %rax
 	addq %rax, 8(%r12)
@@ -113,29 +101,17 @@ main:
 	movq $0, (%r12)
 
 	add $16, %r12
-	lea (%r13, %r14,8), %rax
-	cmpq %rax, %r12
-	jb .Ls2
-	call xrealloc
-.Ls2:
 
 	movq (%r12), %rax
 	addq %rax, -16(%r12)
 	movq $0, (%r12)
 
 	sub $16, %r12
-	cmp %r13, %r12
-	cmovl %r13, %r12
 
 	jmp .L1e
 .L1:
 
 	add $8, %r12
-	lea (%r13, %r14,8), %rax
-	cmpq %rax, %r12
-	jb .Ls3
-	call xrealloc
-.Ls3:
 
 	movq (%r12), %rax
 	addq %rax, 8(%r12)
@@ -143,63 +119,34 @@ main:
 	movq $0, (%r12)
 
 	add $16, %r12
-	lea (%r13, %r14,8), %rax
-	cmpq %rax, %r12
-	jb .Ls4
-	call xrealloc
-.Ls4:
 
 	movq (%r12), %rax
 	addq %rax, -16(%r12)
 	movq $0, (%r12)
 
 	sub $24, %r12
-	cmp %r13, %r12
-	cmovl %r13, %r12
 
 	subq $1, (%r12)
-	movq (%r12), %rcx
-	movq $0, %rax
-	cmovsq %rax, %rcx
-	movq %rcx, (%r12)
 
 .L1e:
 	cmpq $0, (%r12)
 	jne .L1
 
 	add $16, %r12
-	lea (%r13, %r14,8), %rax
-	cmpq %rax, %r12
-	jb .Ls5
-	call xrealloc
-.Ls5:
 
 	movq (%r12), %rax
 	addq %rax, -16(%r12)
 	movq $0, (%r12)
 
 	sub $16, %r12
-	cmp %r13, %r12
-	cmovl %r13, %r12
 
 	add $8, %r12
-	lea (%r13, %r14,8), %rax
-	cmpq %rax, %r12
-	jb .Ls6
-	call xrealloc
-.Ls6:
 
 	movq $0, (%r12)
 
 	sub $16, %r12
-	cmp %r13, %r12
-	cmovl %r13, %r12
 
 	subq $1, (%r12)
-	movq (%r12), %rcx
-	movq $0, %rax
-	cmovsq %rax, %rcx
-	movq %rcx, (%r12)
 
 .L0e:
 	cmpq $0, (%r12)
@@ -208,31 +155,16 @@ main:
 	call debug_print
 
 	add $8, %r12
-	lea (%r13, %r14,8), %rax
-	cmpq %rax, %r12
-	jb .Ls7
-	call xrealloc
-.Ls7:
 
 	call debug_print
 
 	add $8, %r12
-	lea (%r13, %r14,8), %rax
-	cmpq %rax, %r12
-	jb .Ls8
-	call xrealloc
-.Ls8:
 
 	movq $0, (%r12)
 
 	call debug_print
 
 	add $8, %r12
-	lea (%r13, %r14,8), %rax
-	cmpq %rax, %r12
-	jb .Ls9
-	call xrealloc
-.Ls9:
 
 	call debug_print
 	mov %r13, %rdi
